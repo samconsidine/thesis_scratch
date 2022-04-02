@@ -11,7 +11,7 @@ INF = torch.tensor(torch.inf, dtype=torch.float32)
 def gen_prims_data_instance(n_nodes: int, n_dims: int) -> torch_geometric.data.Data:
     edge_weights, edge_index = gen_random_fc_graph(n_nodes, n_dims)
     mst = prims(edge_weights)
-    data = Data(x=torch.ones(12, 1), edge_attr=edge_weights, edge_index=edge_index, y=mst)
+    data = Data(x=torch.ones(12, 1), edge_attr=edge_weights.flatten().unsqueeze(1), edge_index=edge_index, y=mst)
     return data
 
 
@@ -41,6 +41,7 @@ def prims(edge_weights: torch.Tensor) -> torch.Tensor:
 
 def mask_visited(edge_weights, visited: torch.Tensor) -> torch.Tensor:
     not_visited = torch.logical_not(visited)
+
     masked_weights = edge_weights * visited.unsqueeze(1) * not_visited
     return torch.where(masked_weights != 0, masked_weights, INF)
 
