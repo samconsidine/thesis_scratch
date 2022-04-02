@@ -1,8 +1,7 @@
 import torch
 from torch.nn import Sequential, Linear, ReLU, Dropout, Module, BatchNorm1d
 from torch_geometric.nn import MessagePassing, global_mean_pool
-from torch_geometric.utils import softmax
-from torch_scatter import scatter
+from graph_utils import softmax
 
 
 class MPNNModel(Module):
@@ -34,7 +33,7 @@ class MPNNModel(Module):
         # Linear prediction head
         # dim: d -> out_dim
         self.lin_pred = Linear(emb_dim, out_dim)
-
+        
     def forward(self, data):
         """
         Args:
@@ -49,8 +48,9 @@ class MPNNModel(Module):
             h = h + conv(h, data.edge_index, data.edge_attr) # (n, d) -> (n, d)
             # Note that we add a residual connection after each MPNN layer
 
-        out = self.lin_pred(h) # (batch_size, d) -> (batch_size, 1)
-        print(f'{out.shape=}')
+        h_graph = self.pool(h, data.batch) # (n, d) -> (batch_size, d)
+
+        out = self.lin_pred(h_graph) # (batch_size, d) -> (batch_size, 1)
 
         return out.view(-1)
 
@@ -106,6 +106,7 @@ class MPNNLayer(MessagePassing):
         Returns
             out: (n, d) - updated node features
         """
+        print(f"{h.shape=}, {edge_index.shape=}, {edge_attr.shape=}")
         out = self.propagate(edge_index, h=h, edge_attr=edge_attr)
         return out
 
@@ -134,8 +135,8 @@ class MPNNLayer(MessagePassing):
         Returns:
             msg: (e, d) - messages `m_ij` passed through MLP `\psi`
         """
+        print(f"{h_i.shape=}, {h_j.shape=}, {edge_attr.shape=}")
         msg = torch.cat([h_i, h_j, edge_attr], dim=-1)
-
         return self.mlp_msg(msg)
 
     def aggregate(self, inputs, index):
