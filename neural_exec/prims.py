@@ -18,12 +18,12 @@ def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
     prims_steps = [item for item in prims_generator(n_nodes, edge_weights)]
 
     # Needs neatening up omg
-    x_next, x_prev, predecessor = (torch.stack(x, axis=1) for x in tuple(zip(*prims_steps)))
+    x_next, x_prev, predecessor = (torch.stack(x, axis=1) for x in zip(*prims_steps))
     predecessor = predecessor.T  # To get correct shape for batching
 
     return Data(
-        x=x_next, 
-        y=x_prev, 
+        x=x_prev, 
+        y=x_next, 
         edge_weights=flatten_edge_weights(edge_weights, edge_index),
         edge_index=edge_index, 
         predecessor_index=predecessor
@@ -32,23 +32,20 @@ def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
 
 def flatten_edge_weights(edge_weights: Tensor, edge_index: Tensor) -> Tensor:
 
-    def _flatten_weights(edge_weights: Tensor) -> Tensor:
-        return edge_weights.flatten()
-
     def test_flattened_weights(edge_weights: Tensor, flat_weights: Tensor):
         for i in range(flat_weights.shape[0]):
             assert edge_weights[edge_index[0][i], edge_index[1][i]] == flat_weights[i]
 
-    flat_weights = _flatten_weights(edge_weights)
-    
+    flat_weights = edge_weights.flatten()
+
     test_flattened_weights(edge_weights, flat_weights)
     return flat_weights
 
 
 def print_instance(data: Data):
     print(f"predecessors: {data.predecessor_index.T}")
-    print(f"prev tree: {data.y}")
-    print(f"next tree: {data.x}")
+    print(f"prev tree: {data.x}")
+    print(f"next tree: {data.y}")
     print(f"edge_weights: {data.edge_weights}")
 
 
@@ -70,9 +67,8 @@ def prims_generator(num_nodes: int, edge_weights: Tensor) -> Tensor:
     for _ in range(num_nodes-1):
         prev_visited = visited.clone()
 
-        next_node_flat_idx = torch.argmin(mask_visited(edge_weights, visited))
-        to_node_idx = torch.remainder(next_node_flat_idx, dim)
-        from_node_idx = torch.div(next_node_flat_idx, dim, rounding_mode='trunc')
+        next_node_flat_idx = torch.argmin(mask_visited(edge_weights, visited)).item()
+        from_node_idx, to_node_idx = divmod(next_node_flat_idx, dim) 
         visited[to_node_idx] = True
         predecessor[to_node_idx] = from_node_idx
 
@@ -81,7 +77,6 @@ def prims_generator(num_nodes: int, edge_weights: Tensor) -> Tensor:
 
 def mask_visited(edge_weights, visited: Tensor) -> Tensor:
     not_visited = torch.logical_not(visited)
-
     masked_weights = edge_weights * visited.unsqueeze(1) * not_visited
     return torch.where(masked_weights != 0, masked_weights, INF)
 
@@ -89,8 +84,10 @@ def mask_visited(edge_weights, visited: Tensor) -> Tensor:
 if __name__=="__main__":
     from torch_geometric.loader import DataLoader
 
-    graphs = [gen_prims_data_instance(6, 1) for _ in range(16)]
-    loader = DataLoader(graphs, batch_size=8)
+    graphs = [gen_prims_data_instance(4, 1) for _ in range(2)]
+    print(graphs[0].edge_weights)
+    print(graphs[1].edge_weights)
+    loader = DataLoader(graphs, batch_size=2)
     for data in loader:
         print_instance(data)
 
