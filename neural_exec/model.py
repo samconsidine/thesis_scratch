@@ -42,3 +42,4 @@ class MPNN(MessagePassing):
             hidden = self.U(torch.cat((x, aggr_out), dim=1))
 
         return hidden
+

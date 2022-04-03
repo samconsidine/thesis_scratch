@@ -1,45 +1,19 @@
+import torch
+from torch import Tensor
 from torch_scatter import gather_csr, scatter, segment_csr
 
+from numbers import Number
 
-@torch.jit.script
-def softmax(src: Tensor, index: Optional[Tensor] = None,
-            ptr: Optional[Tensor] = None, num_nodes: Optional[int] = None,
-            dim: int = 0) -> Tensor:
-    r"""Computes a sparsely evaluated softmax.
-    Given a value tensor :attr:`src`, this function first groups the values
-    along the first dimension based on the indices specified in :attr:`index`,
-    and then proceeds to compute the softmax individually for each group.
 
-    Args:
-        src (Tensor): The source tensor.
-        index (LongTensor, optional): The indices of elements for applying the
-            softmax. (default: :obj:`None`)
-        ptr (LongTensor, optional): If given, computes the softmax based on
-            sorted inputs in CSR representation. (default: :obj:`None`)
-        num_nodes (int, optional): The number of nodes, *i.e.*
-            :obj:`max_val + 1` of :attr:`index`. (default: :obj:`None`)
-        dim (int, optional): The dimension in which to normalize.
-            (default: :obj:`0`)
+def increase_self_loop_weight(edge_weights: Tensor, edge_index: Tensor, amount: Number) -> Tensor:
 
-    :rtype: :class:`Tensor`
-    """
-    if ptr is not None:
-        dim = dim + src.dim() if dim < 0 else dim
-        size = ([1] * dim) + [-1]
-        ptr = ptr.view(size)
-        src_max = gather_csr(segment_csr(src, ptr, reduce='max'), ptr)
-        out = (src - src_max).exp()
-        out_sum = gather_csr(segment_csr(out, ptr, reduce='sum'), ptr)
-    elif index is not None:
-        N = maybe_num_nodes(index, num_nodes)
-        src_max = scatter(src, index, dim, dim_size=N, reduce='max')
-        src_max = src_max.index_select(dim, index)
-        out = (src - src_max).exp()
-        out_sum = scatter(out, index, dim, dim_size=N, reduce='sum')
-        out_sum = out_sum.index_select(dim, index)
+    if len(edge_weights.shape) == 1:
+        return torch.where(edge_index[0] == edge_index[1], edge_weights + amount, edge_weights)
+
+    elif len(edge_weights.shape) == 2:
+        return edge_weights + torch.eye(edge_weights.shape) * amount
+
     else:
-        raise NotImplementedError
-
-    return out / (out_sum + 1e-16)
+        raise ValueError(f"Can't increase self loop weight on tensor of size {edge_weights.shape}")
 
 
