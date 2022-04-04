@@ -86,3 +86,4 @@ class PredecessorDecoder(nn.Module):
     def forward(self, enc, latent):
         ...
 
+
