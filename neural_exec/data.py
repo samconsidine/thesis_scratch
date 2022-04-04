@@ -5,14 +5,8 @@ from torch_geometric.utils import to_dense_adj, to_undirected
 
 from typing import Tuple, List
 
+
 INF = torch.tensor(torch.inf, dtype=torch.float32)
-
-
-def gen_prims_data_instance(n_nodes: int, n_dims: int) -> torch_geometric.data.Data:
-    edge_weights, edge_index = gen_random_fc_graph(n_nodes, n_dims)
-    mst = prims(edge_weights)
-    data = Data(x=torch.ones(12, 1), edge_attr=edge_weights, edge_index=edge_index, y=mst)
-    return data
 
 
 def gen_random_fc_graph(n_nodes:int, n_dims: int) -> Tuple[torch.Tensor, List[int]]:

@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 import torch_geometric
 from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_adj, to_undirected
 import matplotlib.pyplot as plt
 
@@ -26,7 +27,8 @@ def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
         y=x_next, 
         edge_weights=flatten_edge_weights(edge_weights, edge_index),
         edge_index=edge_index, 
-        predecessor_index=predecessor
+        predecessor_index=predecessor,
+        graph_size=n_nodes
     )
 
 
@@ -81,8 +83,13 @@ def mask_visited(edge_weights, visited: Tensor) -> Tensor:
     return torch.where(masked_weights != 0, masked_weights, INF)
 
 
+def generate_prims_dataset(size: int, num_nodes: int, batch_size: int) -> DataLoader:
+    graphs = [gen_prims_data_instance(num_nodes, 1) for _ in range(size)]
+    loader = DataLoader(graphs, batch_size=batch_size)
+    return loader
+
+
 if __name__=="__main__":
-    from torch_geometric.loader import DataLoader
 
     graphs = [gen_prims_data_instance(4, 1) for _ in range(2)]
     print(graphs[0].edge_weights)
