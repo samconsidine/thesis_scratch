@@ -18,7 +18,6 @@ def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
     generator = prims_generator(n_nodes, edge_weights)
     prims_steps = [item for item in prims_generator(n_nodes, edge_weights)]
 
-    # Needs neatening up omg
     x_next, x_prev, predecessor = (torch.stack(x, axis=1) for x in zip(*prims_steps))
     predecessor = predecessor.T  # To get correct shape for batching
 
@@ -27,7 +26,7 @@ def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
         y=x_next, 
         edge_weights=flatten_edge_weights(edge_weights, edge_index),
         edge_index=edge_index, 
-        predecessor_index=predecessor,
+        predecessor=predecessor,
         graph_size=n_nodes
     )
 
@@ -90,7 +89,6 @@ def generate_prims_dataset(size: int, num_nodes: int, batch_size: int) -> DataLo
 
 
 if __name__=="__main__":
-
     graphs = [gen_prims_data_instance(4, 1) for _ in range(2)]
     print(graphs[0].edge_weights)
     print(graphs[1].edge_weights)

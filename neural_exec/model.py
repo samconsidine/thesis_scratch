@@ -74,16 +74,29 @@ class MSTDecoder(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, encoded: Tensor, latent: Tensor) -> Tensor:
-        model_in = torch.cat([encoded, latent], axis=1)
+    def forward(self, encoded: Tensor, h: Tensor) -> Tensor:
+        model_in = torch.cat([encoded, h], axis=1)
         return self.layers(model_in)
 
 
 class PredecessorDecoder(nn.Module):
-    def __init__(self):
+    def __init__(self, latent_dim: int, n_outputs: int):
         super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(latent_dim * 4, latent_dim),
+            nn.ReLU(),
+            nn.Linear(latent_dim, 1)
+        )
+        self.n_outputs = n_outputs
 
-    def forward(self, enc, latent):
-        ...
+    def forward(self, encoded: Tensor, h: Tensor, edge_index: Tensor) -> Tensor:
+        left_encoded = encoded[edge_index[0]]
+        right_encoded = encoded[edge_index[1]]
+        left_h = h[edge_index[0]]
+        right_h = h[edge_index[1]]
+
+        out = self.layers(torch.cat((left_encoded, left_h, right_encoded, right_h), axis=1))
+        out = out.reshape((-1, self.n_outputs))
+        return out
 
 

@@ -38,6 +38,6 @@ class CentroidPool(nn.Module):
         super().__init__()
         self.coords = torch.normal(mean=0, std=0.01, size=(n_dims, n_clusts), requires_grad=True).T
         self.module_list = [self.coords]
-    
+
     def forward(self, x):
         return torch.cdist(x, self.coords)
