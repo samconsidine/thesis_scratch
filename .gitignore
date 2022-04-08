@@ -130,3 +130,4 @@ dmypy.json
 
 scrnaseq_processor/data
 scrnaseq_processor/Clustering Rough.ipynb
+pseudotime_pred_from_graphs/data/
