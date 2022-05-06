@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import torch
 from torch import Tensor
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing
+from dataclasses import dataclass
+import torch.nn.functional as F
 
 
-class MPNN(MessagePassing):
+class ProcessorNetwork(MessagePassing):
 
     def __init__(self, in_channels, out_channels, aggr='max', bias=False,  # Channels?
             flow='source_to_target', use_gru=False):
 
-        super(MPNN, self).__init__(aggr=aggr, flow=flow)
+        super(ProcessorNetwork, self).__init__(aggr=aggr, flow=flow)
 
         self.M = nn.Sequential(
             nn.Linear(2*in_channels+1, out_channels, bias=bias),
@@ -95,7 +99,9 @@ class PredecessorDecoder(nn.Module):
         left_h = h[edge_index[0]]
         right_h = h[edge_index[1]]
 
-        out = self.layers(torch.cat((left_encoded, left_h, right_encoded, right_h), axis=1))
+        out = self.layers(torch.cat(
+            (left_encoded, left_h, right_encoded, right_h), axis=1))
+
         out = out.reshape((-1, self.n_outputs))
         return out
 

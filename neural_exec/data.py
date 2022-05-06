@@ -38,4 +38,3 @@ def mask_visited(edge_weights, visited: torch.Tensor) -> torch.Tensor:
     masked_weights = edge_weights * visited.unsqueeze(1) * not_visited
     return torch.where(masked_weights != 0, masked_weights, INF)
 
-

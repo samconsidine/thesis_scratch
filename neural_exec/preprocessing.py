@@ -1,5 +1,5 @@
 from torch_geometric.data import Data
-from graph_utils import increase_self_loop_weight
+from neural_exec.graph_utils import increase_self_loop_weight
 
 
 def preprocess_mst(data: Data) -> Data:

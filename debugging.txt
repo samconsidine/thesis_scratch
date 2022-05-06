@@ -1,0 +1,10 @@
+D_exp.shape=torch.Size([128, 128]), D_phys.shape=torch.Size([2, 2]), assignments.shape=torch.Size([128])
+> /home/sam/thesis/thesis_scratch/loss_for_dobrik.py(16)structural_correspondance_loss()
+-> for k, l in product(range(n_clusts), range(n_clusts)):
+(Pdb) assignments
+tensor([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0,
+0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0])

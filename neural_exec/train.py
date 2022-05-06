@@ -18,7 +18,7 @@ NUM_NODES = 6
 MST_COEF = 1.
 PRED_COEF = 1.
 N_DATA = 2
-BATCH_SIZE = 2
+BATCH_SIZE = 1
 
 loader = generate_prims_dataset(size=N_DATA, num_nodes=NUM_NODES, batch_size=BATCH_SIZE)
 encoder = Encoder(node_feature_dim=1, latent_dim=LATENT_DIM)

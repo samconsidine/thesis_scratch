@@ -9,7 +9,6 @@ from sklearn.decomposition import PCA
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-
 from torch import nn
 from typing import List, Optional
 

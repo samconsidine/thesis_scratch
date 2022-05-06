@@ -85,7 +85,7 @@ def eval(model, loader, device):
     return error / len(loader.dataset)
 
 
-def run_experiment(model, model_name, train_loader, val_loader, test_loader, n_epochs=100):
+def run_experiment(model, model_name, train_loader, val_loader, test_loader, n_epochs=1):
     
     print(f"Running experiment for {model_name}, training on {len(train_loader.dataset)} samples for {n_epochs} epochs.")
     
