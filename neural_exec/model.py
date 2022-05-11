@@ -8,6 +8,9 @@ from dataclasses import dataclass
 import torch.nn.functional as F
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 class ProcessorNetwork(MessagePassing):
 
     def __init__(self, in_channels, out_channels, aggr='max', bias=False,  # Channels?
@@ -32,6 +35,8 @@ class ProcessorNetwork(MessagePassing):
             self.gru = nn.GRUCell(out_channels, out_channels, bias=bias)
 
         self.out_channels = out_channels
+
+        self.to(device)
 
     def forward(self, x, edge_attr, edge_index, hidden):
         out = self.propagate(edge_index, x=x, hidden=hidden, edge_attr=edge_attr)
@@ -64,6 +69,8 @@ class Encoder(nn.Module):
             nn.ReLU()
         )
 
+        self.to(device)
+
     def forward(self, prev_tree: Tensor, latent: Tensor) -> Tensor:
         model_in = torch.cat([prev_tree, latent], axis=1)
         return self.layers(model_in)
@@ -77,6 +84,8 @@ class MSTDecoder(nn.Module):
             nn.Linear(latent_dim * 2, 1),
             nn.Sigmoid()
         )
+
+        self.to(device)
 
     def forward(self, encoded: Tensor, h: Tensor) -> Tensor:
         model_in = torch.cat([encoded, h], axis=1)
@@ -92,6 +101,7 @@ class PredecessorDecoder(nn.Module):
             nn.Linear(latent_dim, 1)
         )
         self.n_outputs = n_outputs
+        self.to(device)
 
     def forward(self, encoded: Tensor, h: Tensor, edge_index: Tensor) -> Tensor:
         left_encoded = encoded[edge_index[0]]

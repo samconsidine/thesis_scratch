@@ -5,6 +5,9 @@ from torch.nn import Linear, Sigmoid, ReLU, Sequential
 from typing import List, Optional
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 class AutoEncoder(nn.Module):
     def __init__(self, encoder_sizes: List[int],
                  decoder_sizes: Optional[List[int]] = None):
@@ -28,6 +31,7 @@ class AutoEncoder(nn.Module):
             ReLU(),
             Linear(128, encoder_sizes[0])
         )
+        self.to(device)
 
     def _build_layers(self, sizes: List[int]) -> List[nn.Module]:
         num_layers = len(sizes)-1
@@ -53,6 +57,7 @@ class CentroidPool(nn.Module):
         self.coords = nn.Parameter(torch.rand(n_clusts, n_dims, requires_grad=True))
         self.module_list = [self.coords]
         self.n_clusts = n_clusts
+        self.to(device)
     
     def forward(self, latent):
         closest_centroid = torch.cdist(latent, self.coords).min(1)[1]
@@ -65,6 +70,7 @@ class KMadness(nn.Module):
     def __init__(self, n_clusts, n_dims):
         super().__init__()
         self.coords = nn.Parameter(torch.rand(size=(n_clusts, n_dims)))
+        self.to(device)
 
     @property
     def w(self):

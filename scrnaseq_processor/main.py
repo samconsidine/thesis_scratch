@@ -11,6 +11,8 @@ import seaborn as sns
 from scrnaseq_processor.models import AutoEncoder, CentroidPool
 from scrnaseq_processor.data import load_data, process_for_model, batch_data
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def combine_params(*models):
     params = set()
@@ -36,6 +38,8 @@ def train(dataset, ae, pool, epochs, clust_coef=0.01, recon_coef=1.):
         recon_loss_ = 0
         for batch in tqdm(dataset):
             X, y = batch
+            X = X.to(device)
+            y = y.to(device)
             optimizer.zero_grad()
             latent, reconstruction = ae(X)
 
@@ -73,7 +77,7 @@ def cluster_loss(distances):
 
 def test(inp: Tensor, labels, ae: AutoEncoder, pool: CentroidPool) -> pd.DataFrame:
     with torch.no_grad():
-        latent, reconstruction = ae(inp)
+        latent, reconstruction = ae(inp.to(device))
         #cluster_distances = pool(latent)
         #predicted_clusters = torch.argmin(cluster_distances, 1)
 
@@ -81,8 +85,8 @@ def test(inp: Tensor, labels, ae: AutoEncoder, pool: CentroidPool) -> pd.DataFra
         label_idxs = np.argmax(pd.get_dummies(labels.values).values, axis=-1)
 
         data_cols = [f'dim_{i}' for i in range(latent.shape[1])]
-        df = pd.DataFrame(latent.numpy(), columns=data_cols)
-        df['predicted_cluster'] = predicted_clusters
+        df = pd.DataFrame(latent.detach().cpu().numpy(), columns=data_cols)
+        df['predicted_cluster'] = predicted_clusters.cpu()
         df['real_cluster'] = label_idxs
 
     return df

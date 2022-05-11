@@ -15,6 +15,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 def gather_clusters():
     dataset, inputs, labels = pipeline()
     ae = AutoEncoder([1200, 256, 2])
@@ -84,7 +87,7 @@ if __name__ == "__main__":
     cluster_centers = pool.coords
     tree = prims_solver(cluster_centers)
 
-    X = torch.cat([d[0] for d in data])
+    X = torch.cat([d[0] for d in data]).to(device)
     #plot_mst(tree, ae.encoder(X).detach().numpy(), cluster_centers)
 
     optimizer = torch.optim.Adam(join_parameters(ae, pool, prims_solver))
@@ -92,6 +95,7 @@ if __name__ == "__main__":
     n_epochs = 10
     torch.set_printoptions(precision=9)
     for epoch in range(n_epochs):
+        print(f"Epoch no: {epoch}")
         latent = ae.encoder(X)
         cluster_centers = pool.coords
         graph_size = cluster_centers.shape[0]
