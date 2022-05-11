@@ -3,10 +3,13 @@ import torch
 from scrnaseq_processor.data import pipeline
 from scrnaseq_processor.models import AutoEncoder, KMadness, CentroidPool
 from scrnaseq_processor.main import train, test, eval_results
-from neural_exec.create_prims_model import create_prims_model, create_tree, ProcessorNetwork
+from neural_exec.create_prims_model import (
+    create_prims_model, create_tree, ProcessorNetwork
+)
 from utils.losses import mst_reconstruction_loss
 from utils.data_structures import MST
 
+import scanpy as sc
 from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,9 +22,9 @@ def gather_clusters():
 
     ae, pool, loss = train(dataset, ae, pool, 10)
     df = test(inputs, labels, ae, pool)
-    eval_results(df, pool, inputs) # Am going to need to redo how this works fml
+    # eval_results(df, pool, inputs) # Am going to need to redo how this works fml
 
-    return dataset, ae, pool
+    return dataset, ae, pool, inputs, labels
 
 
 def solve_mst(prims_solver, cluster_centers):
@@ -74,7 +77,8 @@ def ensure_gradients(gene_encoder, gene_decoder, pool, mst_encoder, processor,
 
 
 if __name__ == "__main__":
-    data, ae, pool = gather_clusters()
+    orig_data = sc.datasets.paul15()
+    data, ae, pool, inputs, labels = gather_clusters()
     prims_solver = create_prims_model(num_nodes=pool.n_clusts)
 
     cluster_centers = pool.coords
@@ -85,18 +89,17 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam(join_parameters(ae, pool, prims_solver))
 
-    n_epochs = 5
+    n_epochs = 10
+    torch.set_printoptions(precision=9)
     for epoch in range(n_epochs):
         latent = ae.encoder(X)
         cluster_centers = pool.coords
         graph_size = cluster_centers.shape[0]
-
         tree_logits = prims_solver(cluster_centers)
 
-        #tree_logits = (tree_logits + tree_logits.T).softmax(1)
-        tree = torch.stack([torch.arange(tree_logits.shape[1]), tree_logits.argmax(1)])
-        #tree = torch.tensor([[x, y] for x in range(graph_size) for y in range(graph_size)]).T
-        loss = mst_reconstruction_loss(latent, mst, X, ae.decoder)
+        tree = torch.ones_like(tree_logits).nonzero().T
+        mst = MST(cluster_centers, tree, tree_logits.softmax(1))
+        loss = mst_reconstruction_loss(latent[:5000], mst, X[:5000], ae.decoder)
 
         optimizer.zero_grad()
         loss.backward()
@@ -104,7 +107,29 @@ if __name__ == "__main__":
                 prims_solver.processor, prims_solver.mst_decoder,
                 prims_solver.predecessor_decoder)
         optimizer.step()
-        print(f'Loss = {loss.item()}')
+
+        with torch.no_grad():
+            import seaborn as sns
+            import matplotlib.pyplot as plt
+
+            outs = ae.encoder(inputs).detach().numpy()
+            xs = outs[:, 0]
+            ys = outs[:, 1]
+
+            coords = pool.coords
+            cx = coords[:, 0]
+            cy = coords[:, 1]
+
+            sns.scatterplot(x=xs, y=ys, hue=labels.values)
+            sns.scatterplot(x=cx, y=cy, marker="*", zorder=10, color='black')
+            plt.show()
+
+            from_nodes = mst.edges[0]
+            to_nodes = mst.edges[1]
+            # for i in range(len(coords)):
+            #     xs = [coords[from_nodes[i]][0], coords[to_nodes[i]][0]]
+            #     ys = [coords[from_nodes[i]][1], coords[to_nodes[i]][1]]
+            #     plt.plot(xs, ys, 'ro-')
 
     plot_mst(tree_logits, ae.encoder(X).detach().numpy(), cluster_centers)
 

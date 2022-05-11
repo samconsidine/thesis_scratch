@@ -14,6 +14,7 @@ def batch_mst_acc(preds, real):
     with torch.no_grad():
         return (preds == real).float().mean()
 
+        breakpoint()
 
 class PrimsSolver(torch.nn.Module):
     def __init__(
@@ -52,7 +53,7 @@ class PrimsSolver(torch.nn.Module):
 
 
 def create_prims_model(latent_dim=16, node_features=1, num_nodes=6, mst_coef=1.,
-        pred_coef=1., n_data=2, batch_size=1, epochs=1000):
+        pred_coef=1., n_data=2, batch_size=1, epochs=5000):
 
     loader = generate_prims_dataset(size=n_data, num_nodes=num_nodes,
                                     batch_size=batch_size)
@@ -119,7 +120,7 @@ def create_prims_model(latent_dim=16, node_features=1, num_nodes=6, mst_coef=1.,
 
 
 def create_tree(
-        model:PrimsSolver, 
+        prims_solver:PrimsSolver, 
         cluster_centers:
         Tensor, graph_size: int
     ) -> Tensor:
@@ -131,14 +132,20 @@ def create_tree(
     predecessors = torch.zeros((graph_size,1))
     predecessors.fill_(torch.nan)
     predecessors[0,0] = 0
+    edge_index = torch.tensor([[x, y] 
+        for x in range(graph_size) 
+        for y in range(graph_size)]).T
+
+    edge_weights = ((cluster_centers[edge_index[0]] - cluster_centers[edge_index[1]])**2).sum(1).sqrt()
+
     for step in range(graph_size - 1):
 
         encoded = prims_solver.encoder(prev_tree, h)
-        h = prims_solver.processor(x=encoded, edge_attr=data.edge_weights,
-                      edge_index=data.edge_index, hidden=h)
+        h = prims_solver.processor(x=encoded, edge_attr=edge_weights,
+                      edge_index=edge_index, hidden=h)
 
         mst_logits = prims_solver.mst_decoder(encoded, h)
-        pred_logits = prims_solver.pred_decoder(encoded, h, data.edge_index)
+        pred_logits = prims_solver.predecessor_decoder(encoded, h, edge_index)
 
         # Get the max of the logits and the preds to be the tree
         prev_tree[torch.argmax(mst_logits)] = 1  # ???

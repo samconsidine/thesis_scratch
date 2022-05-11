@@ -1,6 +1,5 @@
 """ Code from VITAE https://github.com/jaydu1/VITAE/blob/master/VITAE/utils.py """
 
-
 import h5py
 import numpy as np
 import pandas as pd
@@ -27,7 +26,7 @@ type_dict = {
     'germline':'non-UMI',    
     'human_embryos':'non-UMI', 
     'mesoderm':'non-UMI',
-    
+
     # dyngen
     "linear_1":'non-UMI', 
     "linear_2":'non-UMI', 
@@ -41,7 +40,7 @@ type_dict = {
     "trifurcating_1":'non-UMI', 
     "trifurcating_2":'non-UMI',         
     "converging_1":'non-UMI',
-    
+
     # our model
     'linear':'UMI',
     'bifurcation':'UMI',
@@ -77,7 +76,7 @@ def load_data(path, file_name):
             data['cell_ids'] = np.array(f['cell_ids']).astype(str)
         else:
             data['cell_ids'] = None
-            
+
         if 'milestone_network' in f:
             if file_name in ['linear','bifurcation','multifurcating','tree',                              
                             "cycle_1", "cycle_2", "cycle_3",
@@ -112,7 +111,7 @@ def load_data(path, file_name):
     if data['type']=='non-UMI':
         scale_factor = np.sum(data['count'],axis=1, keepdims=True)/1e6
         data['count'] = data['count']/scale_factor
-    
+
     return data  
 
 
@@ -122,12 +121,15 @@ def to_anndata(data):
     var = data['gene_names']
     misc_1 = data['grouping']
     misc_2 = data['milestone_network']
+    misc_2['cell_type'] = misc_1
 
-    print(f'{misc_1=}')
-    print(f'{misc_2=}')
+    return AnnData(X=X, obs=misc_2, var=var)
 
-    return AnnData(X=X, obs=obs, var=var)
 
+
+def load_synthetic_data():
+    data = load_data('data', 'bifurcating_3')
+    return to_anndata(data)
 
 if __name__ == "__main__":
     data = load_data('data', 'bifurcating_3')

@@ -15,9 +15,8 @@ def project_onto_mst(
 
     distances = torch.cdist(latent, tree.midpoints, p=2.0)
     projection_probabilities = distances.softmax(1)
-    # breakpoint()
 
-    projected_coords = tree.midpoints.unsqueeze(1).repeat(1, latent.shape[0], 1) 
+    projected_coords = tree.midpoints.unsqueeze(1).expand(-1, latent.shape[0], -1) 
 
     return projection_probabilities, projected_coords
 
@@ -36,16 +35,14 @@ def mst_reconstruction_loss(
     ) -> float:
 
     projection_probabilities, projected_coords = project_onto_mst(latent, mst)
+    # fake_loss = (mst.probabilities.view(-1).unsqueeze(0) * projection_probabilities).min(-1).values.sum()
+    # return fake_loss
 
-    reconstructions = [decoder(mst_projection) for mst_projection in projected_coords]
-    prediction_target_pairs = zip(projection_probabilities, reconstructions)
+    reconstructions = decoder(projected_coords)
+    distances = ((X - reconstructions)**2).sum(-1).sqrt()
+    loss = distances * (mst.probabilities.view(-1).unsqueeze(0) * projection_probabilities).T
 
-    loss = sum(
-        (projection_probabilities[:, i].unsqueeze(0).T 
-            * (torch.abs(X - reconstruction)**2).sqrt().sum(1)).mean()
-        for i, reconstruction in enumerate(reconstructions)
-    )
-    return loss
+    return loss.mean()
 
 
 if __name__ == "__main__":
@@ -70,7 +67,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(list(centroids.parameters()) +
             list(encoder.parameters()) + list(decoder.parameters()))
 
-    n_epochs = 100
+    n_epochs = 50
     for epoch in range(n_epochs):
 
         latent = encoder(X)
