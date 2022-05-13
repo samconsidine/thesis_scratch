@@ -10,6 +10,9 @@ from neural_exec.preprocessing import preprocess_mst
 from neural_exec.prims import generate_prims_dataset
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 def batch_mst_acc(preds, real):
     with torch.no_grad():
         return (preds == real).float().mean()
@@ -80,14 +83,15 @@ def create_prims_model(latent_dim=16, node_features=1, num_nodes=6, mst_coef=1.,
         # Train
         for data in loader:
             graph_size = data.graph_size[0]
-            h = torch.zeros((data.num_nodes, latent_dim))
+            h = torch.zeros((data.num_nodes, latent_dim), device=device)
+
             mst_loss = 0.
             pred_loss = 0.
 
             for step in range(graph_size - 1):
                 prev_tree = data.x[:, step:(step+1)]  # Keep dims of slice
                 current_tree = data.y[:, step:(step+1)]
-                predecessors = data.predecessor[-1].long()
+                predecessors = data.predecessor[-1].long().to(device)
 
                 encoded = encoder(prev_tree, h)
                 h = processor(x=encoded, edge_attr=data.edge_weights,
@@ -107,7 +111,7 @@ def create_prims_model(latent_dim=16, node_features=1, num_nodes=6, mst_coef=1.,
             loss = pred_loss + mst_loss
             loss /= data.graph_size[0] - 1
             # print(f":Loss: {loss.item()}")
-            losses.append(loss.detach().numpy())
+            losses.append(loss.cpu().detach().numpy())
 
             optimizer.zero_grad()
             loss.backward()

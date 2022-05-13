@@ -10,6 +10,7 @@ from typing import Tuple, List, Iterable
 
 
 INF = torch.tensor(torch.inf, dtype=torch.float32)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
@@ -22,11 +23,11 @@ def gen_prims_data_instance(n_nodes: int, n_dims: int) -> Data:
     predecessor = predecessor.T  # To get correct shape for batching
 
     return Data(
-        x=x_prev, 
-        y=x_next, 
-        edge_weights=flatten_edge_weights(edge_weights, edge_index),
-        edge_index=edge_index, 
-        predecessor=predecessor,
+        x=x_prev.to(device), 
+        y=x_next.to(device), 
+        edge_weights=flatten_edge_weights(edge_weights, edge_index).to(device),
+        edge_index=edge_index.to(device), 
+        predecessor=predecessor.to(device),
         graph_size=n_nodes
     )
 

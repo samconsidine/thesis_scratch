@@ -19,6 +19,9 @@ import sys
 N_DIMS = 2
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 def gather_clusters():
     dataset, inputs, labels = pipeline()
     ae = AutoEncoder([1200, 256, N_DIMS])
@@ -93,6 +96,7 @@ if __name__ == "__main__":
     n_epochs = 10
 
     for epoch in range(n_epochs):
+        print(f"Epoch no: {epoch}")
         latent = ae.encoder(X)
         graph_size = pool.coords.shape[0]
         tree_logits = prims_solver(pool.coords)
