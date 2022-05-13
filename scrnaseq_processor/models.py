@@ -49,14 +49,13 @@ class AutoEncoder(nn.Module):
 class CentroidPool(nn.Module):
     def __init__(self, n_clusts, n_dims):
         super().__init__()
-        # self.coords = nn.Parameter(torch.normal(mean=1, std=1, size=(n_dims, n_clusts), requires_grad=True).T)
+        print("Initialised CentroidPool class")
         self.coords = nn.Parameter(torch.rand(n_clusts, n_dims, requires_grad=True))
-        self.module_list = [self.coords]
+        # self.module_list = [self.coords]
         self.n_clusts = n_clusts
     
     def forward(self, latent):
         closest_centroid = torch.cdist(latent, self.coords).min(1)[1]
-        print(closest_centroid.shape)
         cluster_distances = torch.linalg.norm((latent - self.coords[closest_centroid]), dim=1)
         return closest_centroid
 
@@ -97,3 +96,30 @@ def f2(tensor):
 
 def sqnorm(tensor):
     return torch.linalg.norm(tensor, dim=1)**2
+
+
+class ACE(nn.Module):
+    def __init__(self, n_clusts):
+        super().__init__()
+
+        cluster_layers = [ClusterModule(n_dims) for _ in range(n_clusts)]
+    
+    @property
+    def coords(self):
+        return torch.stack([layer.centroid for layer in self.cluster_layers])
+
+    def forward(self, x):
+        ...
+
+
+if __name__ == "__main__":
+    X = torch.rand(100, 2)
+    clusterer = KMadness(3, 2)
+
+    clusts = clusterer(X)
+    assert (clusts.sum(1) == 1).all().item(), "Multiple or no clusters assigned to a point"
+    
+    min_dists = torch.cdist(X, clusterer.coords).argmin(1)
+
+    assert (clusts.max(1)[1] == min_dists).all().item(), "Wrong cluster assignment"
+

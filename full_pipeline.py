@@ -13,12 +13,16 @@ import scanpy as sc
 from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+
+
+N_DIMS = 2
 
 
 def gather_clusters():
     dataset, inputs, labels = pipeline()
-    ae = AutoEncoder([1200, 256, 2])
-    pool = CentroidPool(11, 2)
+    ae = AutoEncoder([1200, 256, N_DIMS])
+    pool = KMadness(11, N_DIMS)
 
     ae, pool, loss = train(dataset, ae, pool, 10)
     df = test(inputs, labels, ae, pool)
@@ -34,7 +38,7 @@ def solve_mst(prims_solver, cluster_centers):
     return dec
 
 
-def plot_mst(logits, X, centroids):
+def plot_mst(logits, X, centroids, epoch):
     to_nodes = logits.argmax(1).detach().numpy()
     from_nodes = np.arange(len(to_nodes))
     centroids = centroids.detach().numpy()
@@ -42,8 +46,8 @@ def plot_mst(logits, X, centroids):
         xs = [centroids[from_nodes[i]][0], centroids[to_nodes[i]][0]]
         ys = [centroids[from_nodes[i]][1], centroids[to_nodes[i]][1]]
         plt.plot(xs, ys, 'ro-')
-    plt.scatter(X[:, 0], X[:, 1])
-    plt.show()
+    # plt.scatter(X[:, 0], X[:, 1])
+    # plt.savefig(f'plots/mst/{epoch}.png')
 
 
 def join_parameters(*modules):
@@ -81,25 +85,22 @@ if __name__ == "__main__":
     data, ae, pool, inputs, labels = gather_clusters()
     prims_solver = create_prims_model(num_nodes=pool.n_clusts)
 
-    cluster_centers = pool.coords
-    tree = prims_solver(cluster_centers)
-
     X = torch.cat([d[0] for d in data])
     #plot_mst(tree, ae.encoder(X).detach().numpy(), cluster_centers)
 
     optimizer = torch.optim.Adam(join_parameters(ae, pool, prims_solver))
 
     n_epochs = 10
-    torch.set_printoptions(precision=9)
+
     for epoch in range(n_epochs):
         latent = ae.encoder(X)
-        cluster_centers = pool.coords
-        graph_size = cluster_centers.shape[0]
-        tree_logits = prims_solver(cluster_centers)
+        graph_size = pool.coords.shape[0]
+        tree_logits = prims_solver(pool.coords)
 
         tree = torch.ones_like(tree_logits).nonzero().T
-        mst = MST(cluster_centers, tree, tree_logits.softmax(1))
+        mst = MST(pool.coords, tree, tree_logits.softmax(1))
         loss = mst_reconstruction_loss(latent[:5000], mst, X[:5000], ae.decoder)
+        print(f'{pool.coords.grad=}')
 
         optimizer.zero_grad()
         loss.backward()
@@ -120,9 +121,11 @@ if __name__ == "__main__":
             cx = coords[:, 0]
             cy = coords[:, 1]
 
-            sns.scatterplot(x=xs, y=ys, hue=labels.values)
+            sns.scatterplot(x=xs, y=ys, hue=labels.values, legend=False)
             sns.scatterplot(x=cx, y=cy, marker="*", zorder=10, color='black')
-            plt.show()
+            plot_mst(tree_logits, ae.encoder(X).detach().numpy(), pool.coords, epoch)
+            plt.savefig(f'plots/mst/{sys.argv[1]}-{epoch}.png')
+            plt.clf()
 
             from_nodes = mst.edges[0]
             to_nodes = mst.edges[1]
@@ -131,5 +134,4 @@ if __name__ == "__main__":
             #     ys = [coords[from_nodes[i]][1], coords[to_nodes[i]][1]]
             #     plt.plot(xs, ys, 'ro-')
 
-    plot_mst(tree_logits, ae.encoder(X).detach().numpy(), cluster_centers)
 

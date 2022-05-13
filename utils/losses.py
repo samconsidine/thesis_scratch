@@ -8,6 +8,14 @@ from dataclasses import dataclass
 from typing import Tuple, List
 
 
+def lineseg_projection(p1, p2, p3):
+    l2 = torch.sum((p1-p2)**2)
+    t = torch.sum((p3 - p1) * (p2 - p1)) / l2
+    t = max(0, min(1, torch.sum((p3 - p1) * (p2 - p1)) / l2))
+    projection = p1 + t * (p2 - p1)
+    return projection
+
+
 def project_onto_mst(
         latent: Tensor, 
         tree: MST
@@ -35,12 +43,11 @@ def mst_reconstruction_loss(
     ) -> float:
 
     projection_probabilities, projected_coords = project_onto_mst(latent, mst)
-    # fake_loss = (mst.probabilities.view(-1).unsqueeze(0) * projection_probabilities).min(-1).values.sum()
-    # return fake_loss
 
     reconstructions = decoder(projected_coords)
     distances = ((X - reconstructions)**2).sum(-1).sqrt()
-    loss = distances * (mst.probabilities.view(-1).unsqueeze(0) * projection_probabilities).T
+    loss = distances * (mst.probabilities.view(-1).unsqueeze(0) 
+                        * projection_probabilities).T
 
     return loss.mean()
 
