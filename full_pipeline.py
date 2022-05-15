@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 
 from scrnaseq_processor.data import pipeline
 from scrnaseq_processor.models import AutoEncoder, KMadness, CentroidPool
@@ -13,6 +14,7 @@ import scanpy as sc
 from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 import sys
 
 
@@ -25,7 +27,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def gather_clusters():
     dataset, inputs, labels = pipeline()
     ae = AutoEncoder([1200, 256, N_DIMS])
-    pool = KMadness(11, N_DIMS)
+    pool = CentroidPool(11, N_DIMS)
 
     ae, pool, loss = train(dataset, ae, pool, 10)
     df = test(inputs, labels, ae, pool)
@@ -83,6 +85,16 @@ def ensure_gradients(gene_encoder, gene_decoder, pool, mst_encoder, processor,
           f'{is_nonzero_grad(predecessor_decoder)=}')
 
 
+def cluster_loss(X: Tensor, coords: Tensor) -> float:
+    assignments = torch.cdist(X, coords).argmin(1)
+    loss = 0.
+    for clust in range(assignments.max().item()):
+        data = X[assignments == clust]
+        mu = data.mean(0)
+        loss += (data - mu).square().sum(1).sqrt().sum()
+
+    return loss
+
 if __name__ == "__main__":
     orig_data = sc.datasets.paul15()
     data, ae, pool, inputs, labels = gather_clusters()
@@ -102,8 +114,9 @@ if __name__ == "__main__":
         tree_logits = prims_solver(pool.coords)
 
         tree = torch.ones_like(tree_logits).nonzero().T
+        tree = tree[:, tree[0] != tree[1]]
         mst = MST(pool.coords, tree, tree_logits.softmax(1))
-        loss = mst_reconstruction_loss(latent[:5000], mst, X[:5000], ae.decoder)
+        loss = mst_reconstruction_loss(latent[:5000], mst, X[:5000], ae.decoder) + cluster_loss(latent, pool.coords)
         print(f'{pool.coords.grad=}')
 
         optimizer.zero_grad()

@@ -56,7 +56,7 @@ class PrimsSolver(torch.nn.Module):
 
 
 def create_prims_model(latent_dim=16, node_features=1, num_nodes=6, mst_coef=1.,
-        pred_coef=1., n_data=2, batch_size=1, epochs=5000):
+        pred_coef=1., n_data=2, batch_size=1, epochs=1):
 
     loader = generate_prims_dataset(size=n_data, num_nodes=num_nodes,
                                     batch_size=batch_size)
